@@ -6,6 +6,10 @@
 
 VM vm;
 
+static void resetStack() {
+  vm.stackTop = vm.stack; // set stackTop to point to start of array
+}
+
 static InterpretResult run() {
 #define READ_BYTE() (*vm.ip++)
 #define READ_CONSTANT() (vm.chunk->constants.values[READ_BYTE()])
@@ -29,6 +33,7 @@ static InterpretResult run() {
 }
 
 void initVM() {
+  resetStack();
 }
 
 void freeVM() {
@@ -38,4 +43,16 @@ InterpretResult interpret(Chunk* chunk) {
   vm.chunk = chunk;
   vm.ip = vm.chunk->code;
   return run();
+}
+
+void push(Value value) {
+  *vm.stackTop = value; // store value at top of stack array
+  vm.stackTop++; // move pointer forward to next unused slot
+}
+
+Value pop() {
+  vm.stackTop--; // move pointer back to most recent used slot
+  /* no need to clear slot - it's now marked as unused */
+
+  return *vm.stackTop; // return value
 }
