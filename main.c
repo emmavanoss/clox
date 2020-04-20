@@ -9,13 +9,15 @@ int main(int argc, const char* argv[]) {
   Chunk chunk;
   initChunk(&chunk);
 
+  int preConstant = addConstant(&chunk, 0.7);
   int constant = addConstant(&chunk, 1.2);
-  int constantTwo = addConstant(&chunk, 5.6);
+  writeChunk(&chunk, OP_CONSTANT, 122);
+  writeChunk(&chunk, preConstant, 122);
   writeChunk(&chunk, OP_CONSTANT, 123);
   writeChunk(&chunk, constant, 123);
-  writeChunk(&chunk, OP_CONSTANT, 124);
-  writeChunk(&chunk, constantTwo, 124);
-  writeChunk(&chunk, OP_RETURN, 125);
+  writeChunk(&chunk, OP_NEGATE, 123);
+
+  writeChunk(&chunk, OP_RETURN, 124);
   /* disassembleChunk(&chunk, "test chunk"); */
   interpret(&chunk);
   freeVM();
