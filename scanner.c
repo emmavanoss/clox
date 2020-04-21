@@ -51,6 +51,11 @@ static char peek() {
   return *scanner.current;
 }
 
+static char peekNext() {
+  if (isAtEnd()) return '\0';
+  return scanner.current[1];
+}
+
 static void skipWhiteSpace() {
   for (;;) {
     char c = peek();
@@ -64,9 +69,17 @@ static void skipWhiteSpace() {
         scanner.line++;
         advance();
         break;
+      case '/':
+        if (peekNext() == '/') {
+          // comment to end of the line
+          while (peek() != '\n' && !isAtEnd()) advance();
+        } else {
+          return;
+        }
+        break;
       default: return;
+    }
   }
-}
 }
 
 static bool match(char expected) {
