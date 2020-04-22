@@ -21,7 +21,7 @@ typedef enum {
   TOKEN_TRUE, TOKEN_VAR, TOKEN_WHILE,
   // Other
   TOKEN_ERROR,
-  TOKEN_EOF
+  TOKEN_EOF,
 } TokenType;
 
 typedef struct {
