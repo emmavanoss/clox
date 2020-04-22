@@ -5,6 +5,10 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#define DEBUG_TRACE_EXECUTION
+// to print operations
+#define DEBUG_PRINT_CODE
+
+// to print operations and values on value stack
+// #define DEBUG_TRACE_EXECUTION
 
 #endif
