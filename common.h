@@ -5,10 +5,10 @@
 #include <stddef.h>
 #include <stdint.h>
 
-// to print operations
+// to print all instructions in chunk
 #define DEBUG_PRINT_CODE
 
-// to print operations and values on value stack
-// #define DEBUG_TRACE_EXECUTION
+// to print instructions as executed, with value stack
+#define DEBUG_TRACE_EXECUTION
 
 #endif
