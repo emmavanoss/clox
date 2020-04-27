@@ -18,6 +18,7 @@ typedef enum {
 // alias Obj
 struct sObj {
   ObjType type;
+  struct sObj* next;
 };
 
 // alias ObjString

@@ -12,6 +12,9 @@
 static Obj* allocateObject(size_t size, ObjType type) {
   Obj* object = (Obj*)reallocate(NULL, 0, size);
   object->type = type;
+
+  object->next = vm.objects; // update pointer to objects list
+  vm.objects = object; // push new object into head of objects list
   return object;
 }
 
