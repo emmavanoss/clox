@@ -286,8 +286,39 @@ static void printStatement() {
   emitByte(OP_PRINT);
 }
 
+static void synchronize() {
+  parser.panicMode = false;
+
+  // Advance, looking for a statement boundary
+  while (parser.current.type != TOKEN_EOF) {
+    // previous token indicates end of statement
+    if (parser.previous.type == TOKEN_SEMICOLON) return;
+
+    // next token indicates start of new statement
+    switch (parser.current.type) {
+      case TOKEN_CLASS:
+      case TOKEN_FUN:
+      case TOKEN_VAR:
+      case TOKEN_FOR:
+      case TOKEN_IF:
+      case TOKEN_WHILE:
+      case TOKEN_PRINT:
+      case TOKEN_RETURN:
+        return;
+
+      default:
+        // Do nothing - continue searching for stmt boundary
+        ;
+    }
+
+    advance();
+  }
+}
+
 static void declaration() {
   statement();
+
+  if (parser.panicMode) synchronize();
 }
 
 static void statement() {
