@@ -343,7 +343,13 @@ static bool identifiersEqual(Token* a, Token* b) {
 static int resolveLocal(Compiler* compiler, Token* name) {
   for (int i = compiler->localCount - 1; i >= 0; i--) {
     Local* local = &compiler->locals[i];
-    if (identifiersEqual(name, &local->name)) return i;
+    if (identifiersEqual(name, &local->name)) {
+      // check if variable has been initialized
+      if (local->depth == -1) {
+        error("Cannot read local variable in its own initializer.");
+      }
+      return i;
+    }
   }
 
   return -1; // No local var found by this name
@@ -356,7 +362,7 @@ static void addLocal(Token name) {
   }
   Local* local = &current->locals[current->localCount++];
   local->name = name;
-  local->depth = current->scopeDepth;
+  local->depth = -1; // Set depth to -1 to show not yet initialized
 }
 
 static void declareVariable() {
@@ -391,6 +397,11 @@ static uint8_t parseVariable(const char* errorMessage) {
   return identifierConstant(&parser.previous);
 }
 
+static void markInitialized() {
+  // set variable scope to current scopeDepth
+  current->locals[current->localCount - 1].depth = current->scopeDepth;
+}
+
 static ParseRule* getRule(TokenType operatorType) {
   return &rules[operatorType];
 }
@@ -408,7 +419,12 @@ static void block() {
 }
 
 static void defineVariable(uint8_t index) {
-  if (current->scopeDepth > 0) return; // if local, just leave value on stack
+  // if currently in global scope, define as global var
+  // otherwise, now that initializer has been compiled, mark initialized
+  if (current->scopeDepth > 0) {
+    markInitialized();
+    return; // just leave value on stack
+  }
 
   emitBytes(OP_DEFINE_GLOBAL, index);
 }
