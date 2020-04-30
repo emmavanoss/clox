@@ -502,6 +502,64 @@ static void expressionStatement() {
   emitByte(OP_POP);
 }
 
+static void forStatement() {
+  beginScope();
+  consume(TOKEN_LEFT_PAREN, "Expect '(' after 'for'.");
+
+  // Execute initializer clause
+  if (match(TOKEN_SEMICOLON)) {
+    // No initializer
+  } else if (match(TOKEN_VAR)) {
+    varDeclaration();
+  } else {
+    expressionStatement();
+  }
+
+  // Top of loop - jump back to here after condition -> body -> increment
+  int loopStart = currentChunk()->count;
+
+  // Compile condition expression
+  int exitJump = -1;
+  if (!match(TOKEN_SEMICOLON)) {
+    expression(); // Evaluate condition expression (stays on stack)
+    consume(TOKEN_SEMICOLON, "Expect ';' after loop condition.");
+
+    exitJump = emitJump(OP_JUMP_IF_FALSE); // Exit loop if condition is false
+    emitByte(OP_POP); // Pop (truthy) condition off stack
+  }
+
+  // Compile increment clause
+  if (!match(TOKEN_RIGHT_PAREN)) {
+    // Jump over increment expression, to body of loop
+    int bodyJump = emitJump(OP_JUMP);
+
+    // Increment expression executes after body
+    int incrementStart = currentChunk()->count; // Jump after body goes to here
+    expression(); // compile increment expression
+    emitByte(OP_POP); // discard value (we want side effect only)
+    consume(TOKEN_RIGHT_PAREN, "Expect ')' after for clauses.");
+    emitLoop(loopStart); // Jump back to top of for loop to repeat
+
+    loopStart = incrementStart; // set pointer to before increment expression
+
+    // Jump over increment goes to here
+    patchJump(bodyJump);
+  }
+
+  statement(); // Execute body of loop
+
+  // Jump back to increment expression after the body of the loop
+  emitLoop(loopStart);
+
+  if (exitJump != -1) { // i.e. if there was a condition expression
+    // Exit jump (when condition is false) goes to here
+    patchJump(exitJump);
+    emitByte(OP_POP); // Pop (falsy) condition off stack
+  }
+
+  endScope();
+}
+
 static void ifStatement() {
   consume(TOKEN_LEFT_PAREN, "Expect '(' after 'if'.");
   expression();
@@ -584,6 +642,8 @@ static void declaration() {
 static void statement() {
   if (match(TOKEN_PRINT)) {
     printStatement();
+  } else if (match(TOKEN_FOR)) {
+    forStatement();
   } else if (match(TOKEN_IF)) {
     ifStatement();
   } else if (match(TOKEN_WHILE)) {
