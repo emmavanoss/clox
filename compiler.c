@@ -51,6 +51,7 @@ typedef enum {
 } FunctionType;
 
 typedef struct Compiler {
+  struct Compiler* enclosing;
   ObjFunction* function;
   FunctionType functionType;
 
@@ -180,12 +181,18 @@ static void patchJump(int offset) {
 }
 
 static void initCompiler(Compiler* compiler, FunctionType functionType) {
+  compiler->enclosing = current;
   compiler->function = NULL;
   compiler->functionType = functionType;
   compiler->localCount = 0;
   compiler->scopeDepth = 0;
   compiler->function = newFunction();
   current = compiler;
+
+  if (functionType != TYPE_SCRIPT) {
+    current->function->name = copyString(parser.previous.start,
+        parser.previous.length);
+  }
 
   Local* local = &current->locals[current->localCount++];
   local->depth = 0;
@@ -199,11 +206,12 @@ static ObjFunction* endCompiler() {
 
 #ifdef DEBUG_PRINT_CODE
   if (!parser.hadError) {
-    disassembleChunk(currentChunk(), 
+    disassembleChunk(currentChunk(),
         function->name != NULL ? function->name->chars : "<script>");
   }
 #endif
 
+  current = current->enclosing;
   return function;
 }
 
@@ -468,6 +476,7 @@ static uint8_t parseVariable(const char* errorMessage) {
 }
 
 static void markInitialized() {
+  if (current->scopeDepth == 0) return; // for top lvl fun declarations
   // set variable scope to current scopeDepth
   current->locals[current->localCount - 1].depth = current->scopeDepth;
 }
@@ -497,6 +506,42 @@ static void defineVariable(uint8_t index) {
   }
 
   emitBytes(OP_DEFINE_GLOBAL, index);
+}
+
+static void function(FunctionType type) {
+  Compiler compiler;
+  initCompiler(&compiler, type);
+  beginScope();
+
+  // Consume parameters
+  consume(TOKEN_LEFT_PAREN, "Expect '(' after function name.");
+  if (!check(TOKEN_RIGHT_PAREN)) {
+    do {
+      current->function->arity++;
+      if (current->function->arity > 255) {
+        errorAtCurrent("Cannot have more than 255 parameters");
+      }
+
+      uint8_t paramConstant = parseVariable("Expect parameter name.");
+      defineVariable(paramConstant);
+    } while (match(TOKEN_COMMA));
+  }
+  consume(TOKEN_RIGHT_PAREN, "Expect ')' after parameters.");
+
+  // Consume body
+  consume(TOKEN_LEFT_BRACE, "Expect '{' before function body.");
+  block();
+
+  // Create function object
+  ObjFunction* function = endCompiler();
+  emitBytes(OP_CONSTANT, makeConstant(OBJ_VAL(function)));
+}
+
+static void funDeclaration() {
+  uint8_t variable = parseVariable("Expect function name.");
+  markInitialized();
+  function(TYPE_FUNCTION); // generate fun obj on top of stack
+  defineVariable(variable); // save fun obj to variable
 }
 
 static void varDeclaration() {
@@ -650,7 +695,9 @@ static void synchronize() {
 }
 
 static void declaration() {
-  if (match(TOKEN_VAR)) {
+  if (match(TOKEN_FUN)) {
+    funDeclaration();
+  } else if (match(TOKEN_VAR)) {
     varDeclaration();
   } else {
     statement();
