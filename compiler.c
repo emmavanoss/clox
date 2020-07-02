@@ -262,6 +262,26 @@ static void binary(bool canAssign) {
   }
 }
 
+static uint8_t argumentList() {
+  uint8_t argCount = 0;
+  if (!check(TOKEN_RIGHT_PAREN)) {
+    do {
+      expression();
+      if (argCount == 255) {
+        error("Cannot have more than 255 arguments.");
+      }
+      argCount++;
+    } while (match(TOKEN_COMMA));
+  }
+  consume(TOKEN_RIGHT_PAREN, "Expect ')' after arguments.");
+  return argCount;
+}
+
+static void call(bool canAssign) {
+  uint8_t argCount = argumentList();
+  emitBytes(OP_CALL, argCount);
+}
+
 static void literal(bool canAssign) {
   switch (parser.previous.type) {
     case TOKEN_FALSE: emitByte(OP_FALSE); break;
@@ -345,7 +365,7 @@ static void unary(bool canAssign) {
 }
 
 ParseRule rules[] = {
-  { grouping, NULL,   PREC_NONE },   // TOKEN_LEFT_PAREN
+  { grouping, call,   PREC_CALL },   // TOKEN_LEFT_PAREN
   { NULL,     NULL,   PREC_NONE },   // TOKEN_RIGHT_PAREN
   { NULL,     NULL,   PREC_NONE },   // TOKEN_LEFT_BRACE
   { NULL,     NULL,   PREC_NONE },   // TOKEN_RIGHT_BRACE
