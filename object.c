@@ -29,7 +29,7 @@ ObjFunction* newFunction() {
 }
 
 ObjNative* newNative(NativeFn function) {
-  ObjNative native = ALLOCATEOBJ(ObjNative, OBJ_NATIVE);
+  ObjNative* native = ALLOCATEOBJ(ObjNative, OBJ_NATIVE);
   native->function = function;
   return native;
 }
